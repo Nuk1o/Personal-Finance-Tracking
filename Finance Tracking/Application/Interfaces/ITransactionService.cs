@@ -6,5 +6,6 @@ namespace Finance_Tracking.Application.Interfaces
     internal interface ITransactionService
     {
         void CreateTransaction(decimal sum, TransactionType type, string description);
+        IEnumerable<Transaction> GetByPeriodTransaction(DateTime startDate, DateTime endDate);
     }
 }

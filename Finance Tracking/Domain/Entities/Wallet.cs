@@ -18,5 +18,7 @@ namespace Finance_Tracking.Domain.Entities
             BaseBalance = baseBalance;
             Transactions = transactions;
         }
+
+        public Wallet() { }
     }
 }

@@ -7,23 +7,19 @@ namespace Finance_Tracking.Infrastructure.Repositories
     {
         private readonly List<Transaction> _transactions;
 
-        public TransactionRepository(List<Transaction> transaction) => _transactions = transaction;
+        public TransactionRepository(List<Transaction> transaction) 
+            => _transactions = transaction;
 
-        public IEnumerable<Transaction> GetAll() => _transactions;
+        public IEnumerable<Transaction> GetAll() 
+            => _transactions;
 
-        public IEnumerable<Transaction> GetByPeriod(DateTime startDate, DateTime endDate)
-        {
-            throw new NotImplementedException();
-        }
+        public IEnumerable<Transaction> GetByPeriod(DateTime startDate, DateTime endDate) 
+            => _transactions.Where(t => t.Date.Date >= startDate.Date && t.Date.Date <= endDate.Date);
 
-        public void CreateTransaction(Transaction transaction)
-        {
-            _transactions.Add(transaction);
-        }
+        public void CreateTransaction(Transaction transaction) 
+            => _transactions.Add(transaction);
 
-        public int GetLastTransactionID()
-        {
-            return _transactions.Max(t => t.Id);
-        }
+        public int GetLastTransactionID() 
+            => _transactions.Max(t => t.Id);
     }
 }

@@ -2,13 +2,29 @@
 using Finance_Tracking.Domain.Enums;
 using Finance_Tracking.Infrastructure.Repositories;
 using Finance_Tracking.Infrastructure.Services;
+using System;
+using System.Text.Json;
+
+Wallet wallet;
+
+using (FileStream fs = new FileStream("userWallet.json", FileMode.OpenOrCreate))
+{
+    wallet = await JsonSerializer.DeserializeAsync<Wallet>(fs);
+    Console.WriteLine($"UserWallet: {wallet.Id} | {wallet.Name}");
+}
 
 var transactions = GetTransactions();
-var wallet = GetWallet(transactions);
+
 var transactionRepository = new TransactionRepository(transactions);
-var transactionService = new TransactionService(transactionRepository);
 var walletRepository = new WalletRepository(wallet);
 var walletService = new WalletService(walletRepository, transactionRepository);
+var transactionService = new TransactionService(transactionRepository, walletService);
+
+//using (FileStream fs = new FileStream("userWallet.json", FileMode.OpenOrCreate))
+//{
+//    await JsonSerializer.SerializeAsync<Wallet>(fs, wallet);
+//    Console.WriteLine("Data has been saved to file");
+//}
 
 ShowOptions();
 
@@ -27,7 +43,8 @@ void ShowOptions()
             CreateTransaction();
             break;
         case "2":
-            Console.WriteLine($"GetPeriodTransactions: {walletService.GetBalance()}");
+            var range = GetValidDateRange();
+            ShowPeriodTransactions(transactionService.GetByPeriodTransaction(range.start, range.end));
             ShowOptions();
             break;
         case "3":
@@ -40,7 +57,44 @@ void ShowOptions()
     }
 }
 
-void CreateTransaction()
+void ShowPeriodTransactions(IEnumerable<Transaction> transactions)
+{
+    var group = transactions.GroupBy(t => t.TransactionType);
+    foreach (var transactionGroup in group.OrderByDescending(g => g.Sum(s => s.Sum)))
+    {
+        Console.WriteLine(transactionGroup.Key);
+        Console.WriteLine($"| {transactionGroup.Sum(s => s.Sum)}");
+
+        foreach (var transaction in transactionGroup)
+        {
+            Console.WriteLine($"Transaction : {transaction.Date} | {transaction.Sum} ");
+        }
+        Console.WriteLine();
+    }
+}
+
+(DateTime start, DateTime end) GetValidDateRange()
+{
+    DateTime start, end = new DateTime();
+    Console.WriteLine("Enter the date range in the format: DD.MM.YYYY-DD.MM.YYYY");
+    var inputDates = Console.ReadLine();
+    var dates = inputDates.Split(new char[] { '-' });
+    if (!DateTime.TryParse(dates[0], out start) || !DateTime.TryParse(dates[1], out end))
+    {
+        GetValidDateRange();
+    }
+    if (end.Date > DateTime.Now)
+    {
+        GetValidDateRange();
+    }
+    if (start.Date> end.Date) 
+    {
+        GetValidDateRange();
+    }
+    return (start.Date, end.Date);
+}
+
+TransactionType GetValidTransactionType()
 {
     Console.WriteLine($"0 - Income \n1 - Expense");
     TransactionType transactionType = TransactionType.Income;
@@ -53,14 +107,21 @@ void CreateTransaction()
         else
         {
             Console.WriteLine("Invalid transaction type");
-            CreateTransaction();
+            GetValidTransactionType();
         }
     }
     else
     {
         Console.WriteLine("Invalid error");
-        CreateTransaction();
+        GetValidTransactionType();
     }
+
+    return transactionType;
+}
+
+void CreateTransaction()
+{
+    var transactionType = GetValidTransactionType();
 
     Console.WriteLine($"Write sum");
     decimal sum = 0;
@@ -85,8 +146,10 @@ void CreateTransaction()
 List<Transaction> GetTransactions()
 {
     var transactions = new List<Transaction>();
-    transactions.Add(new Transaction(0, DateTime.Now, 100, TransactionType.Income, "test trans 1"));
-    transactions.Add(new Transaction(1, DateTime.Now, 50, TransactionType.Expense, "test trans 2"));
+    transactions.Add(new Transaction(0, new DateTime(2025, 10, 15), 100, TransactionType.Income, "test trans 1"));
+    transactions.Add(new Transaction(1, new DateTime(2025, 10, 20), 50, TransactionType.Expense, "test trans 2"));
+    transactions.Add(new Transaction(2, new DateTime(2025, 11, 1), 75, TransactionType.Income, "test trans 3"));
+    transactions.Add(new Transaction(3, new DateTime(2025, 11, 12), 25, TransactionType.Expense, "test trans 4"));
     return transactions;
 }
 
@@ -95,4 +158,3 @@ Wallet GetWallet(List<Transaction> transactions)
     var wallet = new Wallet(0, "TestUser", Currency.RUB, 200, transactions.ToArray());
     return wallet;
 }
-
