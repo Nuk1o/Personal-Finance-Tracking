@@ -26,6 +26,5 @@ namespace Finance_Tracking.Infrastructure.Services
             }
             return balance;
         }
-
     }
 }

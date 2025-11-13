@@ -18,7 +18,5 @@ namespace Finance_Tracking.Domain.Entities
             TransactionType = transactionType;
             Description = description;
         }
-
-        public Transaction() { }
     }
 }

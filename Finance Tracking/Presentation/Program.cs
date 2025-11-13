@@ -2,29 +2,33 @@
 using Finance_Tracking.Domain.Enums;
 using Finance_Tracking.Infrastructure.Repositories;
 using Finance_Tracking.Infrastructure.Services;
-using System;
 using System.Text.Json;
 
-Wallet wallet;
+Wallet currentWallet;
+Wallet[] wallets;
 
-using (FileStream fs = new FileStream("userWallet.json", FileMode.OpenOrCreate))
+using (FileStream fs = new FileStream("userWallets.json", FileMode.OpenOrCreate))
 {
-    wallet = await JsonSerializer.DeserializeAsync<Wallet>(fs);
-    Console.WriteLine($"UserWallet: {wallet.Id} | {wallet.Name}");
+    wallets = await JsonSerializer.DeserializeAsync<Wallet[]>(fs);
+    Console.WriteLine($"Wallets: {wallets.Length}");
+    PrintWallets(wallets);
 }
 
-var transactions = GetTransactions();
+void PrintWallets(Wallet[]? wallets)
+{
+    foreach (Wallet wallet in wallets)
+    {
+        Console.WriteLine($"|ID {wallet.Id} | {wallet.Name} | {wallet.BaseBalance} | {wallet.Currency}");
+    }
+}
 
+SelectWallet();
+
+var transactions = currentWallet.Transactions;
 var transactionRepository = new TransactionRepository(transactions);
-var walletRepository = new WalletRepository(wallet);
+var walletRepository = new WalletRepository(currentWallet);
 var walletService = new WalletService(walletRepository, transactionRepository);
 var transactionService = new TransactionService(transactionRepository, walletService);
-
-//using (FileStream fs = new FileStream("userWallet.json", FileMode.OpenOrCreate))
-//{
-//    await JsonSerializer.SerializeAsync<Wallet>(fs, wallet);
-//    Console.WriteLine("Data has been saved to file");
-//}
 
 ShowOptions();
 
@@ -71,6 +75,35 @@ void ShowPeriodTransactions(IEnumerable<Transaction> transactions)
         }
         Console.WriteLine();
     }
+
+    if(transactions != null)
+    {
+        Console.WriteLine("| Largest Expenses |");
+        var expenses = transactions.Where(t => t.TransactionType == TransactionType.Expense).OrderByDescending(t => t.Sum).Take(3).ToList();
+        foreach (var expense in expenses)
+        {
+            Console.WriteLine($"Transaction : {expense.Date} | {expense.Sum} ");
+        }
+        Console.WriteLine();
+    }    
+}
+
+void SelectWallet()
+{
+    Console.WriteLine($"Select a wallet ID:");
+    int idWallet = 0;
+
+    if (!int.TryParse(Console.ReadLine(), out idWallet))
+    {
+        SelectWallet();
+        return;
+    }
+    if (idWallet < 0 || idWallet > wallets.Length - 1)
+    {
+        SelectWallet();
+        return;
+    }
+    currentWallet = wallets[idWallet];
 }
 
 (DateTime start, DateTime end) GetValidDateRange()
@@ -79,17 +112,25 @@ void ShowPeriodTransactions(IEnumerable<Transaction> transactions)
     Console.WriteLine("Enter the date range in the format: DD.MM.YYYY-DD.MM.YYYY");
     var inputDates = Console.ReadLine();
     var dates = inputDates.Split(new char[] { '-' });
+    if (dates.Length != 2)
+    {
+        GetValidDateRange();
+        return (DateTime.MinValue, DateTime.MinValue);
+    }
     if (!DateTime.TryParse(dates[0], out start) || !DateTime.TryParse(dates[1], out end))
     {
         GetValidDateRange();
+        return (DateTime.MinValue, DateTime.MinValue);
     }
     if (end.Date > DateTime.Now)
     {
         GetValidDateRange();
+        return (DateTime.MinValue, DateTime.MinValue);
     }
-    if (start.Date> end.Date) 
+    if (start.Date > end.Date)
     {
         GetValidDateRange();
+        return (DateTime.MinValue, DateTime.MinValue);
     }
     return (start.Date, end.Date);
 }
@@ -132,25 +173,27 @@ void CreateTransaction()
         {
             Console.WriteLine("Invalid number");
             CreateTransaction();
+            return;
         }
+        if (sum > walletService.GetBalance() && transactionType == TransactionType.Expense)
+        {
+            Console.WriteLine("Insufficient funds");
+            CreateTransaction();
+            return;
+        }
+    }
+    else
+    {
+        Console.WriteLine("Invalid number");
+        CreateTransaction();
+        return;
     }
 
     Console.WriteLine($"Enter description");
     var description = Console.ReadLine();
 
-    transactionService.CreateTransaction(sum,transactionType, description);
+    transactionService.CreateTransaction(sum, transactionType, description);
     ShowOptions();
-}
-
-
-List<Transaction> GetTransactions()
-{
-    var transactions = new List<Transaction>();
-    transactions.Add(new Transaction(0, new DateTime(2025, 10, 15), 100, TransactionType.Income, "test trans 1"));
-    transactions.Add(new Transaction(1, new DateTime(2025, 10, 20), 50, TransactionType.Expense, "test trans 2"));
-    transactions.Add(new Transaction(2, new DateTime(2025, 11, 1), 75, TransactionType.Income, "test trans 3"));
-    transactions.Add(new Transaction(3, new DateTime(2025, 11, 12), 25, TransactionType.Expense, "test trans 4"));
-    return transactions;
 }
 
 Wallet GetWallet(List<Transaction> transactions)

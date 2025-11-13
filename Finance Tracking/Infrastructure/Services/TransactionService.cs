@@ -1,8 +1,6 @@
 ﻿using Finance_Tracking.Application.Interfaces;
 using Finance_Tracking.Domain.Entities;
 using Finance_Tracking.Domain.Enums;
-using Finance_Tracking.Infrastructure.Repositories;
-using System.Linq;
 
 namespace Finance_Tracking.Infrastructure.Services
 {
@@ -21,12 +19,12 @@ namespace Finance_Tracking.Infrastructure.Services
 
         public void CreateTransaction(decimal sum, TransactionType type, string description)
         {
-            if(type == TransactionType.Expense && _walletService.GetBalance() < sum)
+            if (type == TransactionType.Expense && _walletService.GetBalance() < sum)
             {
                 return;
             }
             _currentTransactionID++;
-            var transaction = new Transaction(_currentTransactionID,DateTime.Now,sum,type,description);
+            var transaction = new Transaction(_currentTransactionID, DateTime.Now, sum, type, description);
             _transactionRepository.CreateTransaction(transaction);
         }
 
